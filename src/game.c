@@ -7,26 +7,23 @@ uint8_t oam_off;
 #pragma data-name(pop)
 #pragma bss-name (pop)
 
-const uint8_t text[] = "Hello Boilerplate";
-const uint8_t palette[] = { 0x02, 0x11, 0x14, 0x30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+// form feed is 0x0C which is a heart in this palette
+unsigned char text[] = "vish was here \f";
+const uint8_t palette[] = { 0x0F, 0x06, 0x15, 0x36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-void screenSetup(void) {
-	/* Turn of the screen */
-	ppu_off();
-
-	/* Setup the palette */
-	pal_bg(palette);
-}
-
-// From https://github.com/themangomago/nes-boilerplate
 void main (void) {
-	/* Setup Screen */
-	screenSetup();
+	// screen off
+	ppu_off();
+	pal_bg(palette);
 
-	vram_adr(NTADR_A(7,14)); /* Starting point */
-	vram_write(text, sizeof(text)); /* Write text to the starting point */
+	// screen is 32 x 30 tiles
+	vram_adr(NTADR_A(10,14)); 
+	
+	// Write text to the starting point
+	vram_write(text, sizeof(text));
 
-	ppu_on_all(); /* Activate PPU */
+	// Activate PPU
+	ppu_on_all();
 
 	while (1) {
 		/* Game Loop */
