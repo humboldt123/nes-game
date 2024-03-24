@@ -7,6 +7,10 @@ uint8_t oam_off;
 #pragma data-name(pop)
 #pragma bss-name(pop)
 
+
+#define WIDTH 256
+#define HEIGHT 240
+
 static unsigned char MOVEMENT_SPEED;
 
 // vars
@@ -20,6 +24,11 @@ static unsigned char x;
 static unsigned char y;
 static unsigned char moving;
 
+static unsigned char u,v;
+
+
+unsigned char i; // loop
+
 // form feed is 0x0C which is a heart in this palette
 unsigned char text[] = {
 	// screen is 32 x 30 tiles
@@ -30,6 +39,7 @@ unsigned char text[] = {
 	NT_UPD_EOF // must end in eof
 };
 
+// this is just the default ghost, not like a source of truth
 unsigned char ghost[] = {
 	//head
 	0, 0, 0x80, 0, 
@@ -41,18 +51,45 @@ unsigned char ghost[] = {
 	128 // terminate
 };
 
-const uint8_t palette[] = { 0x0F, 0x06, 0x15, 0x36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+unsigned char block[] = {
+	//head
+	0, 0, 0x41, 0, 
+	8, 0, 0x42, 0,
+	
+	//body
+	0, 8, 0x51, 0,
+	8, 8, 0x52, 0, 
+	128 // terminate
+};
 
-// loop variable
-unsigned char i;
+const unsigned char palette[] = { 0x0F, 0x06, 0x15, 0x36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+// this is so scuffed what am i doing here
+const unsigned char level[] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+};
+
 void main (void) {
-	// screen off
-	ppu_off();
-	pal_bg(palette);
-
 	ppu_on_all(); // turn on the screen (activate ppu)
-
+	pal_bg(palette);
+	
 	MOVEMENT_SPEED = 1;
+	
+	frame = 0;
 
 	x = 52;
 	y = 180;
@@ -61,16 +98,13 @@ void main (void) {
 
 	ppu_wait_nmi(); // we will be writing on the next frame 
 
-	set_vram_update(NULL); // stop writing it over and over
-	
-	frame = 0;
+
 	while (1) {
 		ppu_wait_frame();
 		pal_spr(palette);
 
-		moving = 0;
-
 		// controls
+		moving = 0;
 		pad = pad_poll(i);
 		if (pad & PAD_LEFT) {
 			x -= MOVEMENT_SPEED;
@@ -122,9 +156,26 @@ void main (void) {
 		}
 
 
-		// render sprite
-		spr = 0;
+
+
+		// render
+		// items render in the opposite order you would expect them to. 
+
+		spr = 0; // why am *i* charged with keeping track of the sprID :(
+		
+	
+		// render ghost
 		spr = oam_meta_spr(x, y, spr, ghost);
+
+
+		//render bg
+		for (u = 0; u < sizeof(level); ++u) {
+			v = level[u]; // address tile
+			if (v == 1) {
+				spr = oam_meta_spr((u % 16)*16, (u / 16)*16, spr, block); // WAIT NO THE NES SPRITE LIMIT IS 8 IM GONNA CRY
+			}
+		}
+
 
 		++frame;
 	}
